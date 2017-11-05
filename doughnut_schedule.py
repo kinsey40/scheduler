@@ -18,22 +18,23 @@ A csv file to the stated location.
 """
 
 ############ TO DO #############
-# The starts bit, i.e. we've already had quite a few weeks in the schedule ~2 hrs
 # Make sure each person is with other people (i.e. rotate who they are with) ~5 hrs
-# Have an 'update' function which will save where the system is currently up to.
+# Have an 'update' function which will save where the system is currently up to. ~10hrs
 ################################
+
 """ *** IMPORT LIBRARIES *** """
 import numpy as np
 import pandas as pd
 import datetime
 import random
+import sys
 from random import randint
 from datetime import date
 from datetime import timedelta
 
 """ GLOBAL VARIABLES *** """
 # Set the parameters
-CSV_SAVE_LOC = "/home/kinsey40/Documents/Roke/Doughnut_Schedule_Created.csv"
+CSV_SAVE_LOC = "/home/kinsey40/Documents/Roke/Doughnuts/Doughnut_Schedule_Created.csv"
 PARTICIPANTS = ['NK', 'CB', 'GW', 'DB', 'HK', 'MG', 'FP', 'FO', 'FI', 'FU', 'FY']
 START_DATE = datetime.date(2017, 10, 20) # Year, month, day
 
@@ -49,6 +50,10 @@ FO_UNAVAILABLE_DATES = []
 FI_UNAVAILABLE_DATES = []
 FU_UNAVAILABLE_DATES = []
 FY_UNAVAILABLE_DATES = []
+
+ALREADY_DONE_DATES = [datetime.date(2017, 10, 20), datetime.date(2017, 10, 27)]
+ALREADY_DONE_PERSON_1 = ['NK', 'CB']
+ALREADY_DONE_PERSON_2 = ['GW', 'MG']
 
 """ *** FUNCTIONS *** """
 def how_many_times(participants, limit=52):
@@ -104,11 +109,15 @@ def create_dataframe(start_date, no_of_weeks):
 
 def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
 
+    # Create a copy of the df
     df = df_true.copy()
 
     # Create a list with values from zero to len(df), these represents the weeks
+    df_dropped_nans = df.dropna(axis=0, how='any')
     values = list(range(0, len(df)))
     values_2 = list(range(0, len(df)))
+    del values[0:len(df_dropped_nans)]
+    del values_2[0:len(df_dropped_nans)]
     all_values = values + values_2
 
     # A checker to see if anything goes wrong
@@ -119,6 +128,21 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
         for person_number, (person, ind_unavailable_dates) in enumerate(zip(participants, unavailable_dates)):
             number = 0
             last_person = False
+
+            # Count the number of values for each person already present in df, adjust accordingly
+            value_counts_1 = df_dropped_nans.groupby('person_1').person_1.count()
+            value_counts_2 = df_dropped_nans.groupby('person_2').person_2.count()
+            count_for_person_1 = 0
+            count_for_person_2 = 0
+
+            if person in value_counts_1.index:
+                count_for_person_1 = value_counts_1.loc[person,]
+
+            if person in value_counts_2.index:
+                count_for_person_2 = value_counts_2.loc[person,]
+
+            both_value_counts = count_for_person_1 + count_for_person_2
+            person_no_of_times = no_of_times - both_value_counts
 
             # Issues arise sometimes with the last person, if this occurs, re-run
             if person_number == len(participants)-1:
@@ -133,7 +157,7 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
                     return df, 0
 
             # Iterate over the number of times each individual does it
-            while number < no_of_times and len(all_values) > 0:
+            while number < person_no_of_times and len(all_values) > 0:
 
                 # Select an element from the list of weeks
                 if len(all_values) == 1:
@@ -161,8 +185,27 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
                         continue
 
                 # Prevents same person doing it two weeks in a row
-                if element_val != 0 and element_val != len(df)-1:
+                if element_val == 0:
+                    if df.loc[element_val + 1, "person_1"] == person or \
+                       df.loc[element_val + 1, "person_2"] == person:
+                        variable = True
 
+                        if last_person:
+                            print("Last person, can't do dual weeks, re-running...")
+                            checker = True
+                            return df, 0
+
+                elif element_val == len(df) - 1:
+                    if df.loc[element_val - 1, "person_1"] == person or \
+                       df.loc[element_val - 1, "person_2"] == person:
+                        variable = True
+
+                        if last_person:
+                            print("Last person, can't do dual weeks, re-running...")
+                            checker = True
+                            return df, 0
+
+                else:
                     if df.loc[element_val - 1, "person_1"] == person or \
                        df.loc[element_val + 1, "person_1"] == person or \
                        df.loc[element_val - 1, "person_2"] == person or \
@@ -216,6 +259,15 @@ def export_table(df, export_loc):
     df.to_csv(export_loc, header=True, index_label="Week_No")
     print("Table has been exported")
 
+def already_done_weeks(df, dates, p1, p2):
+
+    for value, (date, person_1, person_2) in enumerate(zip(dates, p1, p2)):
+        df.at[value, "date"] = date
+        df.at[value, "person_1"] = person_1
+        df.at[value, "person_2"] = person_2
+
+    return df
+
 """ *** MAIN SCRIPT *** """
 if __name__ == "__main__":
 
@@ -224,9 +276,13 @@ if __name__ == "__main__":
     # Call the functions
     no_of_times, no_of_weeks = how_many_times(PARTICIPANTS)
     unpopulated_df = create_dataframe(START_DATE, no_of_weeks)
+    unpopulated_df = already_done_weeks(unpopulated_df, ALREADY_DONE_DATES, ALREADY_DONE_PERSON_1, ALREADY_DONE_PERSON_2)
+
     success_variable = 0
 
     while success_variable != 1:
         df_return, success_variable = populate_dataframe(unpopulated_df, no_of_times, PARTICIPANTS, unavailable_dates)
+
+
 
     export_table(df_return, CSV_SAVE_LOC)
