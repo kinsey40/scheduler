@@ -33,7 +33,7 @@ from datetime import date
 from datetime import timedelta
 from datetime import datetime as dt
 
-""" GLOBAL VARIABLES *** """
+""" *** GLOBAL VARIABLES *** """
 # Set the parameters
 CSV_SAVE_LOC = "/home/kinsey40/Documents/Roke/Doughnuts/Doughnut_Schedule_Created.csv"
 PARTICIPANTS = ['NK', 'CB', 'GW', 'DB', 'HK', 'MG', 'FP', 'FO', 'FI', 'FU', 'FY']
