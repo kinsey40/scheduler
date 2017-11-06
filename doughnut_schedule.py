@@ -299,10 +299,19 @@ def form_past_schedule(df):
 
     return new_df
 
-""" *** MAIN SCRIPT *** """
-if __name__ == "__main__":
+def caller():
 
-    unavailable_dates = [NK_UNAVAILABLE_DATES, CB_UNAVAILABLE_DATES, GW_UNAVAILABLE_DATES, DB_UNAVAILABLE_DATES, HK_UNAVAILABLE_DATES, MG_UNAVAILABLE_DATES, FP_UNAVAILABLE_DATES, FO_UNAVAILABLE_DATES, FI_UNAVAILABLE_DATES, FU_UNAVAILABLE_DATES, FY_UNAVAILABLE_DATES]
+    unavailable_dates = [NK_UNAVAILABLE_DATES,
+                        CB_UNAVAILABLE_DATES,
+                        GW_UNAVAILABLE_DATES,
+                        DB_UNAVAILABLE_DATES,
+                        HK_UNAVAILABLE_DATES,
+                        MG_UNAVAILABLE_DATES,
+                        FP_UNAVAILABLE_DATES,
+                        FO_UNAVAILABLE_DATES,
+                        FI_UNAVAILABLE_DATES,
+                        FU_UNAVAILABLE_DATES,
+                        FY_UNAVAILABLE_DATES]
 
     # Call the functions
     no_of_times, no_of_weeks = how_many_times(PARTICIPANTS)
@@ -329,3 +338,9 @@ if __name__ == "__main__":
 
     # Export the table to the relevant location
     export_table(df_return, CSV_SAVE_LOC)
+
+""" *** MAIN SCRIPT *** """
+if __name__ == "__main__":
+
+    # Call the caller function
+    caller()
