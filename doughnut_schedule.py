@@ -18,8 +18,8 @@ A csv file to the stated location.
 """
 
 ############ TO DO #############
-# Make sure each person is with other people (i.e. rotate who they are with) ~5 hrs
-# Have an 'update' function which will save where the system is currently up to. ~10hrs
+# Make sure each person is with other people (i.e. rotate who they are with) ~2 hrs
+# Allow for non-even no. of participants ~10hrs
 ################################
 
 """ *** IMPORT LIBRARIES *** """
@@ -31,6 +31,7 @@ import sys
 from random import randint
 from datetime import date
 from datetime import timedelta
+from datetime import datetime as dt
 
 """ GLOBAL VARIABLES *** """
 # Set the parameters
@@ -54,6 +55,10 @@ FY_UNAVAILABLE_DATES = []
 ALREADY_DONE_DATES = [datetime.date(2017, 10, 20), datetime.date(2017, 10, 27)]
 ALREADY_DONE_PERSON_1 = ['NK', 'CB']
 ALREADY_DONE_PERSON_2 = ['GW', 'MG']
+
+DATE_TODAY = datetime.date.today()
+UPDATE = True
+CURRENT_SCHEDULE_LOC = "/home/kinsey40/Documents/Roke/Doughnuts/Doughnut_Schedule_Created.csv"
 
 """ *** FUNCTIONS *** """
 def how_many_times(participants, limit=52):
@@ -256,7 +261,7 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
 
 def export_table(df, export_loc):
 
-    df.to_csv(export_loc, header=True, index_label="Week_No")
+    df.to_csv(export_loc, header=True, index_label="week_no")
     print("Table has been exported")
 
 def already_done_weeks(df, dates, p1, p2):
@@ -268,6 +273,32 @@ def already_done_weeks(df, dates, p1, p2):
 
     return df
 
+def form_past_schedule(df):
+
+    for index, row in df.iterrows():
+
+        if dt.strptime(row["date"], "%Y-%m-%d") >= datetime.datetime.combine(DATE_TODAY, datetime.time.min):
+            week_no = index
+            print("We are on week no:", week_no)
+            break;
+
+            if len(df)-week_no < (len(PARTICIPANTS)/4):
+                print("Very close to end, can't perform update now...")
+                sys.exit()
+
+        else:
+            continue
+
+    # Select weeks that have already occured
+    df_keep = df[0:week_no]
+    other_dates = df.loc[week_no:len(df), "date"]
+    other_dates_labeled = pd.DataFrame({"date":other_dates.values})
+
+    # Concat. the future dates back on
+    new_df = pd.concat([df_keep, other_dates_labeled], ignore_index=True, axis=0)
+
+    return new_df
+
 """ *** MAIN SCRIPT *** """
 if __name__ == "__main__":
 
@@ -275,14 +306,26 @@ if __name__ == "__main__":
 
     # Call the functions
     no_of_times, no_of_weeks = how_many_times(PARTICIPANTS)
-    unpopulated_df = create_dataframe(START_DATE, no_of_weeks)
-    unpopulated_df = already_done_weeks(unpopulated_df, ALREADY_DONE_DATES, ALREADY_DONE_PERSON_1, ALREADY_DONE_PERSON_2)
 
+    # Check if this is an update or not
+    if not UPDATE:
+        unpopulated_df = create_dataframe(START_DATE, no_of_weeks)
+        unpopulated_df = already_done_weeks(unpopulated_df, ALREADY_DONE_DATES, ALREADY_DONE_PERSON_1, ALREADY_DONE_PERSON_2)
+
+    else:
+        try:
+            current_schedule = pd.read_csv(CURRENT_SCHEDULE_LOC, header=0, usecols=["date", "person_1", "person_2"])
+        except:
+            print("Error in locating schedule, for update")
+
+        unpopulated_df = form_past_schedule(current_schedule)
+
+    # A variable to track successful execution
     success_variable = 0
 
+    # Keep trying until the dataframe is formed
     while success_variable != 1:
         df_return, success_variable = populate_dataframe(unpopulated_df, no_of_times, PARTICIPANTS, unavailable_dates)
 
-
-
+    # Export the table to the relevant location
     export_table(df_return, CSV_SAVE_LOC)
