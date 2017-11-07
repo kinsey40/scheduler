@@ -18,8 +18,7 @@ A csv file to the stated location.
 """
 
 ############ TO DO #############
-# Make sure each person is with other people (i.e. rotate who they are with) ~2 hrs
-# Allow for non-even no. of participants ~10hrs
+# Allow for non-even no. of participants (various numbers) ~10hrs
 ################################
 
 """ *** IMPORT LIBRARIES *** """
@@ -38,6 +37,9 @@ from datetime import datetime as dt
 CSV_SAVE_LOC = "/home/kinsey40/Documents/Roke/Doughnuts/Doughnut_Schedule_Created.csv"
 PARTICIPANTS = ['NK', 'CB', 'GW', 'DB', 'HK', 'MG', 'FP', 'FO', 'FI', 'FU', 'FY']
 START_DATE = datetime.date(2017, 10, 20) # Year, month, day
+
+# Max no. of times you can be with the same person
+SAME_NO_OF_TIMES = 2
 
 # Insert unavilable dates here
 NK_UNAVAILABLE_DATES = [datetime.date(2018, 6, 1), datetime.date(2018, 9, 7)]
@@ -133,6 +135,7 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
         for person_number, (person, ind_unavailable_dates) in enumerate(zip(participants, unavailable_dates)):
             number = 0
             last_person = False
+            other_people_for_person = []
 
             # Count the number of values for each person already present in df, adjust accordingly
             value_counts_1 = df_dropped_nans.groupby('person_1').person_1.count()
@@ -183,9 +186,7 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
                             print("Last person, can't do date, re-running...")
                             checker = True
                             return df, 0
-
                         break;
-
                     else:
                         continue
 
@@ -222,19 +223,44 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
                             checker = True
                             return df, 0
 
-                # Re-pick a new date, as that person can't do that date
-                if variable:
-                    continue
-
                 # Check to see if that person is already down for that week
-                elif df.loc[element_val, "person_1"] == person:
+                if df.loc[element_val, "person_1"] == person:
                     print("Same person on the same week")
 
                     if last_person:
                         print("Same person error, re-running...")
-                        checker=True
+                        checker = True
                         return df, 0
+                    continue
 
+                # Check to see if been with intended person for too many times
+                if not (pd.isnull(df.loc[element_val, "person_1"]) or pd.isnull(df.loc[element_val, "person_2"]) and variable):
+
+                    if not pd.isnull(df.loc[element_val, "person_1"]):
+                        other_person = df.loc[element_val, "person_1"]
+
+                    else:
+                        other_person = df.loc[element_val, "person_2"]
+
+                    # Count number of occurences of being with that person
+                    count_other_people = other_people_for_person.count(other_person)
+
+                    # Evaluate against set global parameter
+                    if count_other_people >= SAME_NO_OF_TIMES:
+                        print("Been with this person too many times")
+
+                        if last_person:
+                            print("Same person error, re-running...")
+                            checker = True
+                            return df, 0
+                        continue
+
+                    # Append if within the limit
+                    else:
+                        other_people_for_person.append(other_person)
+
+                # Re-pick a new date, as that person can't do that date
+                if variable:
                     continue
 
                 # Set the values in the DataFrame
