@@ -100,7 +100,6 @@ def how_many_times(participants, limit=52):
         print("Error with calculation in how many times")
         return 1
 
-
 def create_dataframe(start_date, no_of_weeks):
 
     # Form the DF, set the initial date and timedelta
@@ -327,6 +326,10 @@ def form_past_schedule(df):
 
 def caller():
 
+    if (len(PARTICIPANTS) % 2 != 0):
+        print("Number of Participants must be a multiple of 2")
+        return 1
+
     unavailable_dates = [NK_UNAVAILABLE_DATES,
                         CB_UNAVAILABLE_DATES,
                         GW_UNAVAILABLE_DATES,
@@ -370,3 +373,5 @@ if __name__ == "__main__":
 
     # Call the caller function
     caller()
+
+""" *** END OF FILE *** """
