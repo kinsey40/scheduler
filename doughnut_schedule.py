@@ -35,11 +35,11 @@ from datetime import datetime as dt
 """ *** GLOBAL VARIABLES *** """
 # Set the parameters
 CSV_SAVE_LOC = "/home/kinsey40/Documents/Roke/Doughnuts/Doughnut_Schedule_Created.csv"
-PARTICIPANTS = ['NK', 'CB', 'GW', 'DB', 'HK', 'MG', 'FP', 'FO', 'FI', 'FU', 'FY']
+PARTICIPANTS = ['NK', 'CB', 'GW', 'DB', 'HK', 'MG', 'FP', 'FO', 'FI', 'FU', 'FY', 'FH', 'FT', 'FR']
 START_DATE = datetime.date(2017, 10, 20) # Year, month, day
 
 # Max no. of times you can be with the same person
-SAME_NO_OF_TIMES = 2
+SAME_NO_OF_TIMES = 5
 
 # Insert unavilable dates here
 NK_UNAVAILABLE_DATES = [datetime.date(2018, 6, 1), datetime.date(2018, 9, 7)]
@@ -53,7 +53,11 @@ FO_UNAVAILABLE_DATES = []
 FI_UNAVAILABLE_DATES = []
 FU_UNAVAILABLE_DATES = []
 FY_UNAVAILABLE_DATES = []
+FH_UNAVAILABLE_DATES = []
+FT_UNAVAILABLE_DATES = []
+FR_UNAVAILABLE_DATES = []
 
+GLOBAL_REMOVE_DATES = [datetime.date(2017, 12, 22), datetime.date(2017, 12, 29)]
 ALREADY_DONE_DATES = [datetime.date(2017, 10, 20), datetime.date(2017, 10, 27)]
 ALREADY_DONE_PERSON_1 = ['NK', 'CB']
 ALREADY_DONE_PERSON_2 = ['GW', 'MG']
@@ -63,7 +67,7 @@ UPDATE = True
 CURRENT_SCHEDULE_LOC = "/home/kinsey40/Documents/Roke/Doughnuts/Doughnut_Schedule_Created.csv"
 
 """ *** FUNCTIONS *** """
-def how_many_times(participants, limit=52):
+def how_many_times(participants, limit_value=52):
 
     # Find the no. of participants
     no_of_ppl = len(participants)
@@ -71,6 +75,9 @@ def how_many_times(participants, limit=52):
     # Define two seperate counters
     counter = 0
     counter_2 = 0
+
+    # Account for all the dates that are removed from the system
+    limit = limit_value - len(GLOBAL_REMOVE_DATES)
 
     # Perform while loop, altering the counters respectively
     while counter < limit:
@@ -107,13 +114,29 @@ def create_dataframe(start_date, no_of_weeks):
     df.at[0, 'date'] = start_date
     week = timedelta(days=7)
 
-    # Put the dates into the df, leaving other cols empty for now
-    for i in range(1, (no_of_weeks)):
-        df.at[i,'date'] = df.at[i-1, 'date'] + week
+    # Initialize a counter and old date variable
+    week_counter = 1
+    old_date = df.at[week_counter-1, 'date']
+    found_removed_date = False
 
+    # Put the dates into the df, leaving other cols empty for now
+    while week_counter < no_of_weeks:
+        new_date = old_date + week
+
+        if new_date not in GLOBAL_REMOVE_DATES:
+            df.at[week_counter,'date'] = new_date
+            old_date = new_date
+            week_counter += 1
+        else:
+            old_date = new_date
+
+    #print(df)
+    #sys.exit(0)
     return df
 
 def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
+
+    print("populating...")
 
     # Create a copy of the df
     df = df_true.copy()
@@ -128,6 +151,7 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
 
     # A checker to see if anything goes wrong
     checker = False
+    bugger = False
 
     while not checker:
         # Iterate over the individuals, and their unavailable_dates
@@ -135,6 +159,7 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
             number = 0
             last_person = False
             other_people_for_person = []
+            identified_weeks_for_person = []
 
             # Count the number of values for each person already present in df, adjust accordingly
             value_counts_1 = df_dropped_nans.groupby('person_1').person_1.count()
@@ -173,6 +198,19 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
                     loc = randint(0, len(all_values)-1)
                 element_val = all_values[loc]
                 variable = False
+
+                # Check to see if that person has already been assigned that week
+                if element_val in identified_weeks_for_person:
+                    print("Same person on the same week")
+                    variable = True
+
+                    if last_person:
+                        print("Same person error, re-running...")
+                        checker = True
+                        return df, 0
+                    continue
+                else:
+                    pass
 
                 # Check to see that individual can do those dates
                 for un_dates in ind_unavailable_dates:
@@ -222,16 +260,6 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
                             checker = True
                             return df, 0
 
-                # Check to see if that person is already down for that week
-                if df.loc[element_val, "person_1"] == person:
-                    print("Same person on the same week")
-
-                    if last_person:
-                        print("Same person error, re-running...")
-                        checker = True
-                        return df, 0
-                    continue
-
                 # Check to see if been with intended person for too many times
                 if not (pd.isnull(df.loc[element_val, "person_1"]) or pd.isnull(df.loc[element_val, "person_2"]) and variable):
 
@@ -266,8 +294,12 @@ def populate_dataframe(df_true, no_of_times, participants, unavailable_dates):
                 else:
                     if pd.isnull(df.loc[element_val, "person_1"]):
                         df.loc[element_val, "person_1"] = person
+                        identified_weeks_for_person.append(element_val)
+
                     elif pd.isnull(df.loc[element_val, "person_2"]):
                         df.loc[element_val, "person_2"] = person
+                        identified_weeks_for_person.append(element_val)
+
                     else:
                         checker=True
                         return df, 0
@@ -309,7 +341,7 @@ def form_past_schedule(df):
 
             if len(df)-week_no < (len(PARTICIPANTS)/4):
                 print("Very close to end, can't perform update now...")
-                sys.exit()
+                sys.exit(0)
 
         else:
             continue
@@ -340,7 +372,10 @@ def caller():
                         FO_UNAVAILABLE_DATES,
                         FI_UNAVAILABLE_DATES,
                         FU_UNAVAILABLE_DATES,
-                        FY_UNAVAILABLE_DATES]
+                        FY_UNAVAILABLE_DATES,
+                        FH_UNAVAILABLE_DATES,
+                        FT_UNAVAILABLE_DATES,
+                        FR_UNAVAILABLE_DATES]
 
     # Call the functions
     no_of_times, no_of_weeks = how_many_times(PARTICIPANTS)
@@ -363,7 +398,8 @@ def caller():
 
     # Keep trying until the dataframe is formed
     while success_variable != 1:
-        df_return, success_variable = populate_dataframe(unpopulated_df, no_of_times, PARTICIPANTS, unavailable_dates)
+        unpopulated_df_copy = unpopulated_df.copy()
+        df_return, success_variable = populate_dataframe(unpopulated_df_copy, no_of_times, PARTICIPANTS, unavailable_dates)
 
     # Export the table to the relevant location
     export_table(df_return, CSV_SAVE_LOC)
