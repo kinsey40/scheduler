@@ -11,7 +11,8 @@ and the avaliability of those individuals. Furthermore, it can be customized by
 editing the start date, so it can be used for future graduate intakes.
 
 Inputs:
-Manually input variables in the global variables section
+Manually input variables in the global variables section and update the relevant
+parts, for each participant
 
 Outputs:
 A csv file to the stated location.
